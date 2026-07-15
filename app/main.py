@@ -11,9 +11,9 @@ my_posts = [{"title" : "title of post1","content" : "content of post1", "id" : 1
             {"title" : "title of post2 " , "content" : "content of post2" , "id" : 2}]
 
 
-app = FastAPI()
+app = FastAPI()    # fastapi instance
 
-class Post(BaseModel):
+class Post(BaseModel):     #schema for post (pydantic model)
     title : str
     content : str
     published : bool = True
@@ -23,6 +23,12 @@ def find_post(id):
     for p in my_posts:
         if p["id"] == id:
             return p
+        
+def find_index_post(id):
+    for i,p in enumerate(my_posts):
+        if p['id'] == id:
+            return i
+    
 
 @app.get("/")
 async def root():
@@ -32,7 +38,7 @@ async def root():
 def posts():
     return {"post": my_posts}
 
-@app.post("/posts")
+@app.post("/posts",status_code= status.HTTP_201_CREATED)
 def create_post(post : Post):
     post_dict = post.model_dump();
     post_dict["id"] = randrange(1,1000000)
@@ -57,3 +63,23 @@ def get_post(id: int):
         # response.status_code = status.HTTP_404_NOT_FOUND
         # return {"message" : f"{id} was not found"}
     return {"post detail" : Post}
+
+@app.delete("/posts/{id}", status_code= status.HTTP_204_NO_CONTENT)
+def delete_post(id: int):
+    index = find_index_post(id)
+    if index is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"{id} not found")
+    my_posts.pop(index)
+    return 
+
+
+@app.put("/posts/{id}")
+def update_post(id: int, post: Post):
+    index = find_index_post(id)
+    if index is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"{id} not found")
+
+    post_dict = post.model_dump()
+    post_dict["id"] = id
+    my_posts[index] = post_dict
+    return {"data" : post_dict}
